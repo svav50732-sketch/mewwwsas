@@ -1,74 +1,121 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { COLORS } from "../constants";
-import { body } from "../fonts";
+import {
+  AbsoluteFill,
+  interpolate,
+  spring,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
+import { COLORS } from "./constants";
+import { display } from "./fonts";
+import { CheckIcon } from "./Icons";
 
-// Дорожка субтитров под озвучку. Тайминги — в кадрах (30 fps).
-// Хук (0–90) намеренно ПУСТОЙ: там крупный анимированный текст
-// сам работает как титр, дублировать его субтитром снизу не нужно.
-//
-// ⚙️  Подгони [from, to] под свою озвучку, когда запишешь голос.
-type Cue = { from: number; to: number; text: string };
-
-const TRACK: Cue[] = [
-  // Проблема 90–240
-  { from: 90, to: 140, text: "А потому что ты сам ищешь рекламу," },
-  { from: 140, to: 196, text: "сам ведёшь переговоры, сам выбиваешь оплату…" },
-  { from: 196, to: 240, text: "и теряешь на этом и деньги, и время." },
-  // Решение 240–420
-  { from: 240, to: 312, text: "Мы — агентство инфлюенс-маркетинга." },
-  { from: 312, to: 366, text: "Бренды приходят к нам," },
-  { from: 366, to: 420, text: "а мы приводим их к тебе." },
-  // Выгода 420–660
-  { from: 420, to: 482, text: "Ты просто снимаешь контент." },
-  { from: 482, to: 544, text: "Мы берём на себя поиск рекламодателей," },
-  { from: 544, to: 596, text: "договоры, оплату —" },
-  { from: 596, to: 660, text: "и поднимаем твою ставку." },
-  // CTA 660–810
-  { from: 660, to: 722, text: "Оставь заявку —" },
-  { from: 722, to: 810, text: "и получи первые предложения уже на этой неделе." },
+const ROWS = [
+  { text: "Поток рекламодателей", accent: COLORS.teal },
+  { text: "Договоры и оплата под защитой", accent: COLORS.teal },
+  { text: "Ставка выше, чем в одиночку", accent: COLORS.gold }, // ключевая выгода
 ];
 
-export const Subtitles: React.FC = () => {
+const Row: React.FC<{
+  index: number;
+  text: string;
+  accent: string;
+}> = ({ index, text, accent }) => {
   const frame = useCurrentFrame();
-  const cue = TRACK.find((c) => frame >= c.from && frame < c.to);
-  if (!cue) return null;
+  const { fps } = useVideoConfig();
+  const delay = 18 + index * 52;
+  const t = frame - delay;
 
-  const fade = interpolate(
-    frame,
-    [cue.from, cue.from + 5, cue.to - 5, cue.to],
-    [0, 1, 1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
+  const enter = spring({
+    frame: t,
+    fps,
+    config: { damping: 15, stiffness: 120, mass: 0.8 },
+  });
+  const x = interpolate(enter, [0, 1], [-80, 0]);
+  const checkProgress = interpolate(t, [10, 28], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const highlight = accent === COLORS.gold;
 
   return (
-    <AbsoluteFill
+    <div
       style={{
-        justifyContent: "flex-end",
+        opacity: enter,
+        transform: `translateX(${x}px)`,
+        display: "flex",
         alignItems: "center",
-        paddingBottom: 230,
-        paddingInline: 90,
+        gap: 30,
+        width: 860,
+        padding: "30px 36px",
+        borderRadius: 26,
+        background: highlight ? "rgba(255,194,75,0.10)" : COLORS.bgSoft,
+        border: `1px solid ${
+          highlight ? "rgba(255,194,75,0.45)" : "rgba(255,255,255,0.07)"
+        }`,
       }}
     >
       <div
         style={{
-          opacity: fade,
-          maxWidth: 860,
-          textAlign: "center",
-          fontFamily: body,
-          fontWeight: 600,
-          fontSize: 44,
-          lineHeight: 1.28,
-          color: COLORS.white,
-          background: "rgba(11,11,12,0.55)",
-          backdropFilter: "blur(2px)",
-          padding: "16px 28px",
-          borderRadius: 18,
-          textShadow: "0 2px 14px rgba(0,0,0,0.6)",
+          width: 70,
+          height: 70,
+          flexShrink: 0,
+          borderRadius: "50%",
+          border: `3px solid ${accent}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: `${accent}1A`,
         }}
       >
-        {cue.text}
+        <CheckIcon size={42} color={accent} progress={checkProgress} />
       </div>
+      <span
+        style={{
+          fontFamily: display,
+          fontWeight: 700,
+          fontSize: 46,
+          color: COLORS.white,
+          lineHeight: 1.15,
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+};
+
+export const Benefits: React.FC = () => {
+  const frame = useCurrentFrame();
+  const eyebrow = interpolate(frame, [0, 14], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 26,
+        marginTop: -110,
+      }}
+    >
+      <div
+        style={{
+          opacity: eyebrow,
+          fontFamily: display,
+          fontWeight: 700,
+          fontSize: 30,
+          letterSpacing: "0.2em",
+          color: COLORS.muted,
+          marginBottom: 8,
+        }}
+      >
+        ТЫ ПОЛУЧАЕШЬ
+      </div>
+      {ROWS.map((r, i) => (
+        <Row key={i} index={i} text={r.text} accent={r.accent} />
+      ))}
     </AbsoluteFill>
   );
 };

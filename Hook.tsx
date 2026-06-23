@@ -6,88 +6,54 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { COLORS } from "../constants";
-import { display } from "../fonts";
-import { CheckIcon } from "../components/Icons";
+import { COLORS } from "./constants";
+import { display } from "./fonts";
 
-const ROWS = [
-  { text: "Поток рекламодателей", accent: COLORS.teal },
-  { text: "Договоры и оплата под защитой", accent: COLORS.teal },
-  { text: "Ставка выше, чем в одиночку", accent: COLORS.gold }, // ключевая выгода
+// Слова с глобальным индексом для шахматного появления.
+const LINES: string[][] = [
+  ["Бренды", "не", "пишут", "тебе"],
+  ["не", "потому,", "что", "у", "тебя"],
 ];
 
-const Row: React.FC<{
+const STRIKE = ["мало", "подписчиков"];
+
+const Word: React.FC<{
+  children: React.ReactNode;
   index: number;
-  text: string;
-  accent: string;
-}> = ({ index, text, accent }) => {
+  color?: string;
+}> = ({ children, index, color = COLORS.white }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const delay = 18 + index * 52;
-  const t = frame - delay;
-
   const enter = spring({
-    frame: t,
+    frame: frame - index * 4,
     fps,
-    config: { damping: 15, stiffness: 120, mass: 0.8 },
+    config: { damping: 14, stiffness: 130, mass: 0.7 },
   });
-  const x = interpolate(enter, [0, 1], [-80, 0]);
-  const checkProgress = interpolate(t, [10, 28], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const highlight = accent === COLORS.gold;
-
+  const y = interpolate(enter, [0, 1], [60, 0]);
   return (
-    <div
+    <span
       style={{
+        display: "inline-block",
+        transform: `translateY(${y}px)`,
         opacity: enter,
-        transform: `translateX(${x}px)`,
-        display: "flex",
-        alignItems: "center",
-        gap: 30,
-        width: 860,
-        padding: "30px 36px",
-        borderRadius: 26,
-        background: highlight ? "rgba(255,194,75,0.10)" : COLORS.bgSoft,
-        border: `1px solid ${
-          highlight ? "rgba(255,194,75,0.45)" : "rgba(255,255,255,0.07)"
-        }`,
+        color,
       }}
     >
-      <div
-        style={{
-          width: 70,
-          height: 70,
-          flexShrink: 0,
-          borderRadius: "50%",
-          border: `3px solid ${accent}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: `${accent}1A`,
-        }}
-      >
-        <CheckIcon size={42} color={accent} progress={checkProgress} />
-      </div>
-      <span
-        style={{
-          fontFamily: display,
-          fontWeight: 700,
-          fontSize: 46,
-          color: COLORS.white,
-          lineHeight: 1.15,
-        }}
-      >
-        {text}
-      </span>
-    </div>
+      {children}
+    </span>
   );
 };
 
-export const Benefits: React.FC = () => {
+export const Hook: React.FC = () => {
   const frame = useCurrentFrame();
-  const eyebrow = interpolate(frame, [0, 14], [0, 1], {
+
+  // индекс для непрерывного стаггера по всем словам
+  let counter = 0;
+  const firstCount = LINES[0].length + LINES[1].length;
+
+  // прогресс рисования красной линии
+  const strikeIn = interpolate(frame, [60, 82], [0, 1], {
+    extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
@@ -96,26 +62,62 @@ export const Benefits: React.FC = () => {
       style={{
         justifyContent: "center",
         alignItems: "center",
-        gap: 26,
-        marginTop: -110,
+        padding: "0 90px",
       }}
     >
       <div
         style={{
-          opacity: eyebrow,
           fontFamily: display,
-          fontWeight: 700,
-          fontSize: 30,
-          letterSpacing: "0.2em",
-          color: COLORS.muted,
-          marginBottom: 8,
+          fontWeight: 800,
+          fontSize: 92,
+          lineHeight: 1.12,
+          textAlign: "center",
+          letterSpacing: "-0.02em",
         }}
       >
-        ТЫ ПОЛУЧАЕШЬ
+        {LINES.map((line, li) => (
+          <div key={li} style={{ display: "block" }}>
+            {line.map((w) => {
+              const idx = counter++;
+              return (
+                <React.Fragment key={idx}>
+                  <Word index={idx}>{w}</Word>{" "}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* строка, которую зачёркиваем */}
+        <div style={{ display: "block", position: "relative", marginTop: 6 }}>
+          <span style={{ position: "relative", display: "inline-block" }}>
+            {STRIKE.map((w, i) => {
+              const idx = firstCount + i;
+              return (
+                <React.Fragment key={idx}>
+                  <Word index={idx} color={COLORS.white}>
+                    {w}
+                  </Word>
+                  {i < STRIKE.length - 1 ? " " : null}
+                </React.Fragment>
+              );
+            })}
+            {/* красная линия зачёркивания */}
+            <div
+              style={{
+                position: "absolute",
+                top: "52%",
+                left: -6,
+                height: 10,
+                borderRadius: 6,
+                background: COLORS.red,
+                width: `calc((100% + 12px) * ${strikeIn})`,
+                boxShadow: `0 0 22px ${COLORS.red}99`,
+              }}
+            />
+          </span>
+        </div>
       </div>
-      {ROWS.map((r, i) => (
-        <Row key={i} index={i} text={r.text} accent={r.accent} />
-      ))}
     </AbsoluteFill>
   );
 };

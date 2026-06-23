@@ -2,122 +2,91 @@ import React from "react";
 import {
   AbsoluteFill,
   interpolate,
-  spring,
+  Sequence,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
-import { COLORS } from "../constants";
-import { display } from "../fonts";
+import { COLORS, SCENES } from "./constants";
+import { Background } from "./Background";
+import { Subtitles } from "./Subtitles";
+import { Hook } from "./Hook";
+import { Problem } from "./Problem";
+import { Solution } from "./Solution";
+import { Benefits } from "./Benefits";
+import { CTA } from "./CTA";
 
-// Слова с глобальным индексом для шахматного появления.
-const LINES: string[][] = [
-  ["Бренды", "не", "пишут", "тебе"],
-  ["не", "потому,", "что", "у", "тебя"],
-];
-
-const STRIKE = ["мало", "подписчиков"];
-
-const Word: React.FC<{
+// Обёртка сцены: фон нужного акцента + мягкое появление.
+const Scene: React.FC<{
+  accent: string;
   children: React.ReactNode;
-  index: number;
-  color?: string;
-}> = ({ children, index, color = COLORS.white }) => {
+}> = ({ accent, children }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const enter = spring({
-    frame: frame - index * 4,
-    fps,
-    config: { damping: 14, stiffness: 130, mass: 0.7 },
+  const fade = interpolate(frame, [0, 8], [0, 1], {
+    extrapolateRight: "clamp",
   });
-  const y = interpolate(enter, [0, 1], [60, 0]);
   return (
-    <span
-      style={{
-        display: "inline-block",
-        transform: `translateY(${y}px)`,
-        opacity: enter,
-        color,
-      }}
-    >
+    <AbsoluteFill style={{ opacity: fade }}>
+      <Background accent={accent} />
       {children}
-    </span>
+    </AbsoluteFill>
   );
 };
 
-export const Hook: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  // индекс для непрерывного стаггера по всем словам
-  let counter = 0;
-  const firstCount = LINES[0].length + LINES[1].length;
-
-  // прогресс рисования красной линии
-  const strikeIn = interpolate(frame, [60, 82], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
+export const Main: React.FC = () => {
   return (
-    <AbsoluteFill
-      style={{
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "0 90px",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: display,
-          fontWeight: 800,
-          fontSize: 92,
-          lineHeight: 1.12,
-          textAlign: "center",
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {LINES.map((line, li) => (
-          <div key={li} style={{ display: "block" }}>
-            {line.map((w) => {
-              const idx = counter++;
-              return (
-                <React.Fragment key={idx}>
-                  <Word index={idx}>{w}</Word>{" "}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        ))}
+    <AbsoluteFill style={{ backgroundColor: COLORS.bg }}>
+      <Sequence from={SCENES.hook.start} durationInFrames={SCENES.hook.duration}>
+        <Scene accent={COLORS.red}>
+          <Hook />
+        </Scene>
+      </Sequence>
 
-        {/* строка, которую зачёркиваем */}
-        <div style={{ display: "block", position: "relative", marginTop: 6 }}>
-          <span style={{ position: "relative", display: "inline-block" }}>
-            {STRIKE.map((w, i) => {
-              const idx = firstCount + i;
-              return (
-                <React.Fragment key={idx}>
-                  <Word index={idx} color={COLORS.white}>
-                    {w}
-                  </Word>
-                  {i < STRIKE.length - 1 ? " " : null}
-                </React.Fragment>
-              );
-            })}
-            {/* красная линия зачёркивания */}
-            <div
-              style={{
-                position: "absolute",
-                top: "52%",
-                left: -6,
-                height: 10,
-                borderRadius: 6,
-                background: COLORS.red,
-                width: `calc((100% + 12px) * ${strikeIn})`,
-                boxShadow: `0 0 22px ${COLORS.red}99`,
-              }}
-            />
-          </span>
-        </div>
-      </div>
+      <Sequence
+        from={SCENES.problem.start}
+        durationInFrames={SCENES.problem.duration}
+      >
+        <Scene accent={COLORS.red}>
+          <Problem />
+        </Scene>
+      </Sequence>
+
+      <Sequence
+        from={SCENES.solution.start}
+        durationInFrames={SCENES.solution.duration}
+      >
+        <Scene accent={COLORS.teal}>
+          <Solution />
+        </Scene>
+      </Sequence>
+
+      <Sequence
+        from={SCENES.benefits.start}
+        durationInFrames={SCENES.benefits.duration}
+      >
+        <Scene accent={COLORS.gold}>
+          <Benefits />
+        </Scene>
+      </Sequence>
+
+      <Sequence from={SCENES.cta.start} durationInFrames={SCENES.cta.duration}>
+        <Scene accent={COLORS.gold}>
+          <CTA />
+        </Scene>
+      </Sequence>
+
+      {/* Субтитры поверх всех сцен */}
+      <Subtitles />
+
+      {/*
+        ОЗВУЧКА:
+        1) Положи свой аудиофайл в папку  public/voice.mp3
+        2) Добавь импорты вверху файла:
+             import { Audio, staticFile } from "remotion";
+        3) Раскомментируй строку ниже:
+
+        <Audio src={staticFile("voice.mp3")} />
+
+        Подгони тайминги субтитров под голос в src/components/Subtitles.tsx
+      */}
     </AbsoluteFill>
   );
 };
